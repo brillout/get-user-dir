@@ -15,6 +15,9 @@ function getUserDir() {
             continue;
         }
         const filePath = stack.getFileName();
+        if( ! filePath ) {
+            continue;
+        }
         if( isNode(filePath) ) {
             continue;
         }
