@@ -16,7 +16,7 @@ You can as well manually set the "user directory":
 const getUserDir = require('@brillout/get-user-dir');
 
 const userDir = '/path/to/user/code'
-getUserDir.userDir = userDir;
+getUserDir.setUserDir(userDir);
 
 assert(getUserDir() === userDir);
 ~~~

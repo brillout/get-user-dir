@@ -2,11 +2,14 @@ const pathModule = require('path');
 const callsites = require('callsites');
 
 module.exports = getUserDir;
+module.exports.setUserDir = setUserDir;
 module.exports.userDir = null;
 
+const globalKey = '__@brillout/get-user-dir__userDir';
+
 function getUserDir() {
-    if( module.exports.userDir !== null ) {
-        return module.exports.userDir;
+    if( global[globalKey] ) {
+        return global[globalKey];
     }
     const stacks = callsites();
     for(let i = stacks.length-1; i>=0; i--) {
@@ -27,6 +30,10 @@ function getUserDir() {
         break;
     }
     return process.cwd();
+}
+
+function setUserDir(userDir) {
+    global[globalKey] = userDir;
 }
 
 function isNode(filePath) {
