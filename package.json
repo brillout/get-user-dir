@@ -1,9 +1,10 @@
 {
   "name": "@brillout/get-user-dir",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "./getUserDir.js",
   "dependencies": {
-    "callsites": "^2.0.0"
+    "callsites": "^2.0.0",
+    "reassert": "^1.1.9"
   },
   "repository": "github:brillout/get-user-dir",
   "publishConfig": {
