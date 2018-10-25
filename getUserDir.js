@@ -3,18 +3,19 @@ const assert_internal = require('reassert/internal');
 
 const GLOBAL_KEY = '__@brillout/get-user-dir__userDir';
 
+// We call `getFirstUserLandCall` here because it doesn't work in an event loop
+const firstUserLandCall = getFirstUserLandCall();
 
 module.exports = getUserDir;
 module.exports.setUserDir = setUserDir;
 module.exports.userDir = null;
-
 
 function getUserDir() {
     if( global[GLOBAL_KEY] ) {
         return global[GLOBAL_KEY];
     }
 
-    const firstCall = getFirstUserLandCall();
+    const firstCall = firstUserLandCall;
     if( firstCall ) {
         return firstCall;
     }
