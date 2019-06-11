@@ -1,6 +1,6 @@
 {
   "name": "@brillout/get-user-dir",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "main": "./getUserDir.js",
   "dependencies": {
     "callsites": "^2.0.0",

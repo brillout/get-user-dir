@@ -3,6 +3,12 @@ const assert = require('@brillout/reassert');
 
 const GLOBAL_KEY = '__@brillout/get-user-dir__userDir';
 
+/*
+const DEBUG = true;
+/*/
+const DEBUG = false;
+//*/
+
 // We call `getFirstUserLandCall` here because it doesn't work in an event loop
 const firstUserLandCall = getFirstUserLandCall();
 
@@ -11,15 +17,18 @@ module.exports.setUserDir = setUserDir;
 module.exports.userDir = null;
 
 function getUserDir() {
+    if(DEBUG) console.log("globally set", global[GLOBAL_KEY]);
     if( global[GLOBAL_KEY] ) {
         return global[GLOBAL_KEY];
     }
 
+    if(DEBUG) console.log('first user-land call', firstUserLandCall);
     const firstCall = firstUserLandCall;
     if( firstCall ) {
         return firstCall;
     }
 
+    if(DEBUG) console.log('current working directory', process.cwd());
     return process.cwd();
 }
 
@@ -28,40 +37,56 @@ function setUserDir(userDir) {
 }
 
 function getFirstUserLandCall() {
-    const calls = getV8StackTrace();
-    for(let i = calls.length-1; i>=0; i--) {
-        const call = calls[i];
-        if( call.isNative() ) {
-            continue;
-        }
-        const filePath = call.getFileName();
-        if( ! filePath ) {
-            continue;
-        }
-        if( isNode(filePath) ) {
-            continue;
-        }
-        if( isDependency(filePath) ) {
-            continue;
-        }
-        const userDir__tentative = pathModule.dirname(filePath);
-        assert.internal(userDir__tentative && pathModule.isAbsolute(userDir__tentative));
-        if( isNotUserCode(userDir__tentative, filePath) ) {
-            continue;
-        }
-        const userDir = userDir__tentative;
-        return userDir;
+    const stackPaths = getStackPaths();
+    if(DEBUG) console.log('stack trace', stackPaths);
+    for( let i = 0; i<stackPaths.length; i++ ){
+      const filePath = stackPaths[i];
+      const is_bin_call = isBinCall(filePath);
+      if(DEBUG) console.log('is bin call', filePath, is_bin_call);
+      if( is_bin_call ){
+        assert.internal(i===0, {filePath, stackPaths});
+        return null;
+      }
+      /*
+      const is_not_user_code = isNotUserCode(filePath);
+      if(DEBUG) console.log('is not user code', filePath, is_not_user_code);
+      if( is_not_user_code ){
+        continue;
+      }
+      */
+      const userDir = pathModule.dirname(filePath);
+      assert.internal(userDir && pathModule.isAbsolute(userDir));
+      return userDir;
     }
     return null;
 }
-function isNotUserCode(userDir__tentative, filePath) {
-  const ProjectFiles = require('@brillout/project-files');
-  const {packageJson, projectDir} = (
-    new ProjectFiles({
-      userDir: userDir__tentative,
-      packageJsonIsOptional: true,
-    })
-  );
+
+function getStackPaths() {
+  const stackPaths = [];
+  const calls = getV8StackTrace();
+  for( let i = calls.length-1; i>=0; i-- ){
+    const call = calls[i];
+    if( call.isNative() ){
+      continue;
+    }
+    const filePath = call.getFileName();
+    if( ! filePath ){
+      continue;
+    }
+    if( isNode(filePath) ){
+      continue;
+    }
+    if( isDependency(filePath) ){
+      continue;
+    }
+    stackPaths.push(filePath);
+  }
+  return stackPaths;
+}
+
+function isNotUserCode(filePath) {
+  const {packageJson, projectDir} = getFileProjectFiles(filePath);
+
   if( !packageJson ) {
     return false;
   }
@@ -70,11 +95,6 @@ function isNotUserCode(userDir__tentative, filePath) {
   if( ((packageJson||{})['@brillout/get-user-dir']||{}).isNotUserCode ){
     return true;
   }
-  /*
-  if( isBinCall({packageJson, projectDir, filePath}) ) {
-    return true;
-  }
-  */
   const {name} = require('./package.json');
   assert.internal(name);
   if( packageJson.name===name ){
@@ -85,16 +105,30 @@ function isNotUserCode(userDir__tentative, filePath) {
   }
   return false;
 }
-/*
-function isBinCall({packageJson, projectDir, filePath}) {
+function getFileProjectFiles(filePath) {
+  const ProjectFiles = require('@brillout/project-files');
+
+  const fileDir = pathModule.dirname(filePath);
+  const {packageJson, projectDir} = (
+    new ProjectFiles({
+      userDir: fileDir,
+      packageJsonIsOptional: true,
+    })
+  );
+
+  return {packageJson, projectDir};
+}
+function isBinCall(filePath) {
+  const {packageJson, projectDir} = getFileProjectFiles(filePath);
+
   if( !packageJson.bin ){
     return false;
   }
+
   const p1 = require.resolve(pathModule.resolve(projectDir, packageJson.bin));
   const p2 = require.resolve(filePath);
   return p1===p2;
 }
-*/
 function isNode(filePath) {
     return !pathModule.isAbsolute(filePath);
 }
@@ -111,3 +145,4 @@ function getV8StackTrace() {
 
     return calls;
 }
+
